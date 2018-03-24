@@ -70,7 +70,7 @@ namespace IdentityManager.Controllers
                 data = qry.Select(u => new {
                     Id = u.Id,
                     Email = u.Email,
-                    LockedOut = u.LockoutEnd != null,
+                    LockedOut = u.LockoutEnd == null ? String.Empty : "Yes",
                     Roles = u.Roles.Select(r => _roles[r.RoleId]),
                     DisplayName = u.Claims.SingleOrDefault(c => c.ClaimType == ClaimTypes.Name).ClaimValue,
                     UserName = u.UserName
@@ -103,12 +103,12 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure creating user {userName}.", userName);
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
         [HttpPost("api/[action]")]
-        public async Task<ActionResult> UpdateUser(string id, string email, string[] roles)
+        public async Task<ActionResult> UpdateUser(string id, string email, string locked, string[] roles)
         {
             try
             {
@@ -117,6 +117,7 @@ namespace IdentityManager.Controllers
                     return NotFound("User not found.");
 
                 user.Email = email;
+                user.LockoutEnd = locked == null ? default(DateTimeOffset?) : DateTimeOffset.MaxValue;
 
                 var result = await _userManager.UpdateAsync(user);
                 if (result.Succeeded)
@@ -139,7 +140,7 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure updating user {userId}.", id);
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
@@ -164,7 +165,7 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure deleting user {userId}.", id);
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
@@ -222,7 +223,7 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure creating role {name}.", name);
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
@@ -247,7 +248,7 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure deleting role {roleId}.", id);
-                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
 
