@@ -60,7 +60,7 @@
                                 $.ajax({
                                     type: 'DELETE',
                                     url: '/api/DeleteRole',
-                                    data: { roleId: data.id }
+                                    data: { id: data.id }
                                 })
                                     .done(delDone)
                                     .fail(delFail);

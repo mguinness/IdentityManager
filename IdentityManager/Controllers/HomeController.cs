@@ -107,18 +107,18 @@ namespace IdentityManager.Controllers
         }
 
         [HttpDelete("api/[action]")]
-        public async Task<ActionResult> DeleteUser(string userId)
+        public async Task<ActionResult> DeleteUser(string id)
         {
             try
             {
-                var user = await _userManager.FindByIdAsync(userId);
+                var user = await _userManager.FindByIdAsync(id);
                 if (user == null)
                     return NotFound("User not found.");
 
                 var result = await _userManager.DeleteAsync(user);
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("Deleted user {email}.", user.UserName);
+                    _logger.LogInformation("Deleted user {name}.", user.UserName);
                     return Accepted();
                 }
                 else
@@ -126,7 +126,7 @@ namespace IdentityManager.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failure deleting user {userId}.", userId);
+                _logger.LogError(ex, "Failure deleting user {userId}.", id);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }
@@ -190,11 +190,11 @@ namespace IdentityManager.Controllers
         }
 
         [HttpDelete("api/[action]")]
-        public async Task<ActionResult> DeleteRole(string roleId)
+        public async Task<ActionResult> DeleteRole(string id)
         {
             try
             {
-                var role = await _roleManager.FindByIdAsync(roleId);
+                var role = await _roleManager.FindByIdAsync(id);
                 if (role == null)
                     return NotFound("Role not found.");
 
@@ -209,23 +209,9 @@ namespace IdentityManager.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failure deleting role {roleId}.", roleId);
+                _logger.LogError(ex, "Failure deleting role {roleId}.", id);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
-        }
-
-        public IActionResult About()
-        {
-            ViewData["Message"] = "Your application description page.";
-
-            return View();
-        }
-
-        public IActionResult Contact()
-        {
-            ViewData["Message"] = "Your contact page.";
-
-            return View();
         }
 
         public IActionResult Error()
