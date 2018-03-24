@@ -11,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using IdentityManager.Data;
 using IdentityManager.Models;
 using IdentityManager.Services;
+using Newtonsoft.Json;
 
 namespace IdentityManager
 {
@@ -36,7 +37,8 @@ namespace IdentityManager
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
-            services.AddMvc();
+            services.AddMvc()
+                .AddJsonOptions(options => options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

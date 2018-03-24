@@ -12,6 +12,7 @@
                     <th data-data="id">Id</th>
                     <th data-data="email">Email</th>
                     <th data-data="userName">UserName</th>
+                    <th data-data="displayName" data-default-content="">Name</th>
                 </tr>
             </thead>
         </table>
@@ -24,6 +25,12 @@
             <div id="userError" class="alert alert-danger" role="alert"></div>
 
             <div class="form-group">
+                <label for="username">Username:</label>
+                <input name="username" type="text" class="form-control" required />
+
+                <label for="name">Name:</label>
+                <input name="name" type="text" class="form-control" />
+
                 <label for="email">Email:</label>
                 <input name="email" type="email" class="form-control" required />
 
@@ -64,12 +71,10 @@
                                 $.ajax({
                                     type: 'DELETE',
                                     url: '/api/DeleteUser',
-                                    data: { email: data.email }
-                                }).done(function (data, status, xhr) {
-                                    $('#usersTable').DataTable().draw();
-                                }).fail(function (xhr, status, error) {
-                                    alert(xhr.responseText || error);
-                                });
+                                    data: { userId: data.id }
+                                })
+                                    .done(delDone)
+                                    .fail(delFail);
                             }
                         }
                     }
@@ -84,6 +89,14 @@
 
         function userFail(xhr, status, error) {
             $('#userError').html(xhr.responseText || error).fadeIn();
+        }
+
+        function delDone(data, status, xhr) {
+            $('#usersTable').DataTable().draw();
+        }
+
+        function delFail(xhr, status, error) {
+            alert(xhr.responseText || error);
         }
     </script>
 }

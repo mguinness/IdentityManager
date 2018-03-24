@@ -41,7 +41,7 @@ namespace IdentityManager.Controllers
 
             string filter = search["value"];
             var qry = users.Where(u =>
-                (String.IsNullOrWhiteSpace(filter) || u.Email.Contains(filter)) &&
+                (String.IsNullOrWhiteSpace(filter) || u.Email.Contains(filter)) ||
                 (String.IsNullOrWhiteSpace(filter) || u.UserName.Contains(filter))
             );
 
@@ -75,16 +75,20 @@ namespace IdentityManager.Controllers
         }
 
         [HttpPost("api/[action]")]
-        public async Task<IActionResult> CreateUser(string email, string password)
+        public async Task<IActionResult> CreateUser(string userName, string name, string email, string password)
         {
             try
             {
-                var user = new ApplicationUser() { Email = email, UserName = email };
+                var user = new ApplicationUser() { Email = email, UserName = userName };
                 
                 var result = await _userManager.CreateAsync(user, password);
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("Created user {email}.", email);
+                    _logger.LogInformation("Created user {userName}.", userName);
+
+                    if (name != null)
+                        await _userManager.AddClaimAsync(user, new Claim(ClaimTypes.Name, name));
+
                     return Accepted();
                 }
                 else
@@ -92,24 +96,24 @@ namespace IdentityManager.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failure creating user {email}.", email);
+                _logger.LogError(ex, "Failure creating user {userName}.", userName);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }
 
         [HttpDelete("api/[action]")]
-        public async Task<ActionResult> DeleteUser(string email)
+        public async Task<ActionResult> DeleteUser(string userId)
         {
             try
             {
-                var user = await _userManager.FindByEmailAsync(email);
+                var user = await _userManager.FindByIdAsync(userId);
                 if (user == null)
                     return NotFound("User not found.");
 
                 var result = await _userManager.DeleteAsync(user);
                 if (result.Succeeded)
                 {
-                    _logger.LogInformation("Deleted user {email}.", email);
+                    _logger.LogInformation("Deleted user {email}.", user.UserName);
                     return Accepted();
                 }
                 else
@@ -117,7 +121,7 @@ namespace IdentityManager.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failure deleting user {email}.", email);
+                _logger.LogError(ex, "Failure deleting user {userId}.", userId);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }
