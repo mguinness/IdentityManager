@@ -8,16 +8,25 @@ using IdentityManager.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
 using System.Reflection;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace IdentityManager.Controllers
 {
     public class HomeController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly ILogger _logger;
+        private readonly Dictionary<string, string> _roles;
 
-        public HomeController(UserManager<ApplicationUser> userManager)
+        public HomeController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<HomeController> logger)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
+            _logger = logger;
+            _roles = roleManager.Roles.ToDictionary(r => r.Id, r => r.Name);
         }
 
         public IActionResult Index()
@@ -28,7 +37,7 @@ namespace IdentityManager.Controllers
         [HttpGet("api/[action]")]
         public IActionResult UserList(int draw, List<Dictionary<string, string>> columns, List<Dictionary<string, string>> order, int start, int length, Dictionary<string, string> search)
         {
-            var users = _userManager.Users;
+            var users = _userManager.Users.Include(u => u.Roles).Include(u => u.Claims);
 
             string filter = search["value"];
             var qry = users.Where(u =>
@@ -55,6 +64,9 @@ namespace IdentityManager.Controllers
                 data = qry.Select(u => new {
                     Id = u.Id,
                     Email = u.Email,
+                    LockedOut = u.LockoutEnd != null,
+                    Roles = String.Join(",", u.Roles.Select(r => _roles[r.RoleId])),
+                    DisplayName = u.Claims.SingleOrDefault(c => c.ClaimType == ClaimTypes.Name).ClaimValue,
                     UserName = u.UserName
                 }).Skip(start).Take(length).ToArray()
             };
