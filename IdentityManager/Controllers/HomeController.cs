@@ -74,6 +74,30 @@ namespace IdentityManager.Controllers
             return Json(result);
         }
 
+
+        [HttpPost("api/[action]")]
+        public async Task<IActionResult> CreateUser(string email, string password)
+        {
+            try
+            {
+                var user = new ApplicationUser() { Email = email, UserName = email };
+                
+                var result = await _userManager.CreateAsync(user, password);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Created user {email}.", email);
+                    return Accepted();
+                }
+                else
+                    return BadRequest(result.Errors.First().Description);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure creating user {email}.", email);
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            }
+        }
+
         public IActionResult About()
         {
             ViewData["Message"] = "Your application description page.";

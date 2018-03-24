@@ -18,10 +18,51 @@
     </div>
 </div>
 
+<modal id="userModal" title="User">
+    <modal-body>
+        <form id="userForm" data-ajax="true" data-ajax-method="POST" data-ajax-url="/api/CreateUser" data-ajax-success="userDone" data-ajax-failure="userFail">
+            <div id="userError" class="alert alert-danger" role="alert"></div>
+
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input name="email" type="email" class="form-control" required />
+
+                <label for="password">Password:</label>
+                <input name="password" type="password" class="form-control" required />
+            </div>
+        </form>
+    </modal-body>
+    <modal-footer dismiss-text="Cancel">
+        <button type="submit" form="userForm" class="btn btn-primary">Create</button>
+    </modal-footer>
+</modal>
+
 @section Scripts {
+    <script type="text/javascript" src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
+
     <script>
         $(function () {
-            $('#usersTable').DataTable();
+            $('#usersTable').DataTable({
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        text: "Create",
+                        action: function (e, dt, button, config) {
+                            $('#userError').hide();
+                            $('#userForm').trigger('reset');
+                            $('#userModal').modal({ backdrop: 'static' });
+                        }
+                    }
+                ]
+            });
         });
+
+        function userDone(data, status, xhr) {
+            $('#userModal').modal('hide');
+        }
+
+        function userFail(xhr, status, error) {
+            $('#userError').html(xhr.responseText || error).fadeIn();
+        }
     </script>
 }
