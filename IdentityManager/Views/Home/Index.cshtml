@@ -13,13 +13,14 @@
                     <th data-data="email">Email</th>
                     <th data-data="userName">UserName</th>
                     <th data-data="displayName" data-default-content="" data-orderable="false">Name</th>
+                    <th data-data="roles">Roles</th>
                 </tr>
             </thead>
         </table>
     </div>
 </div>
 
-<modal id="userModal" title="User">
+<modal id="userModal" title="Add User">
     <modal-body>
         <form id="userForm" data-ajax="true" data-ajax-method="POST" data-ajax-url="/api/CreateUser" data-ajax-success="userDone" data-ajax-failure="userFail">
             <div id="userError" class="alert alert-danger" role="alert"></div>
@@ -44,6 +45,48 @@
     </modal-footer>
 </modal>
 
+<modal id="editModal" title="Edit User">
+    <modal-body>
+        <form id="editForm" data-ajax="true" data-ajax-method="PUT" data-ajax-url="/api/UpdateUser" data-ajax-success="editDone" data-ajax-failure="editFail">
+            <div id="editError" class="alert alert-danger" role="alert"></div>
+
+            <ul class="nav nav-tabs">
+                <li class="active">
+                    <a data-toggle="tab" href="#user">User</a>
+                </li>
+                <li>
+                    <a data-toggle="tab" href="#roles">Roles</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div id="user" class="tab-pane active">
+                    <div class="form-group">
+                        <label>Username:</label>
+                        <p id="Username" class="form-control-static"></p>
+                        <label for="email">Email:</label>
+                        <input name="email" type="email" class="form-control" required />
+                        <input name="id" type="hidden" />
+                    </div>
+                </div>
+                <div id="roles" class="tab-pane">
+                    <div class="form-group">
+                        @foreach (var role in ViewBag.Roles)
+                        {
+                            <div class="checkbox">
+                                <label><input name="roles" type="checkbox" value="@role.Value">@role.Value</label>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </form>
+    </modal-body>
+    <modal-footer dismiss-text="Cancel">
+        <button type="submit" form="editForm" class="btn btn-primary">Update</button>
+    </modal-footer>
+</modal>
+
 @section Scripts {
     <script type="text/javascript" src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
 
@@ -54,11 +97,30 @@
                 select: true,
                 buttons: [
                     {
-                        text: "Create",
+                        text: "New",
                         action: function (e, dt, button, config) {
                             $('#userError').hide();
                             $('#userForm').trigger('reset');
                             $('#userModal').modal({ backdrop: 'static' });
+                        }
+                    },
+                    {
+                        extend: "selectedSingle",
+                        text: "Edit",
+                        action: function (e, dt, button, config) {
+                            var data = dt.row({ selected: true }).data();
+                            $('#editError').hide();
+                            $('#editForm').trigger('reset');
+
+                            $('#editForm #Username').text(data.userName);
+                            $('#editForm input[name=email]').val(data.email);
+                            $('#editForm input[name=id]').val(data.id);
+
+                            $.each(data.roles, function (index, value) {
+                                $('#editForm :checkbox[value=' + value + ']').prop('checked', true);
+                            });
+
+                            $('#editModal').modal({ backdrop: 'static' });
                         }
                     },
                     {
@@ -89,6 +151,15 @@
 
         function userFail(xhr, status, error) {
             $('#userError').html(xhr.responseText || error).fadeIn();
+        }
+
+        function editDone(data, status, xhr) {
+            $('#editModal').modal('hide');
+            $('#usersTable').DataTable().draw();
+        }
+
+        function editFail(xhr, status, error) {
+            $('#editError').html(xhr.responseText || error).fadeIn();
         }
 
         function delDone(data, status, xhr) {

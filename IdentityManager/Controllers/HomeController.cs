@@ -31,6 +31,7 @@ namespace IdentityManager.Controllers
 
         public IActionResult Index()
         {
+            ViewBag.Roles = _roles;
             return View();
         }
 
@@ -70,7 +71,7 @@ namespace IdentityManager.Controllers
                     Id = u.Id,
                     Email = u.Email,
                     LockedOut = u.LockoutEnd != null,
-                    Roles = String.Join(",", u.Roles.Select(r => _roles[r.RoleId])),
+                    Roles = u.Roles.Select(r => _roles[r.RoleId]),
                     DisplayName = u.Claims.SingleOrDefault(c => c.ClaimType == ClaimTypes.Name).ClaimValue,
                     UserName = u.UserName
                 }).Skip(start).Take(length).ToArray()
@@ -94,7 +95,7 @@ namespace IdentityManager.Controllers
                     if (name != null)
                         await _userManager.AddClaimAsync(user, new Claim(ClaimTypes.Name, name));
 
-                    return Accepted();
+                    return NoContent();
                 }
                 else
                     return BadRequest(result.Errors.First().Description);
@@ -102,6 +103,42 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure creating user {userName}.", userName);
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [HttpPost("api/[action]")]
+        public async Task<ActionResult> UpdateUser(string id, string email, string[] roles)
+        {
+            try
+            {
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                    return NotFound("User not found.");
+
+                user.Email = email;
+
+                var result = await _userManager.UpdateAsync(user);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Updated user {name}.", user.UserName);
+
+                    var userRoles = await _userManager.GetRolesAsync(user);
+
+                    foreach (string role in roles.Except(userRoles))
+                        await _userManager.AddToRoleAsync(user, role);
+
+                    foreach (string role in userRoles.Except(roles))
+                        await _userManager.RemoveFromRoleAsync(user, role);
+
+                    return NoContent();
+                }
+                else
+                    return BadRequest(result.Errors.First().Description);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure updating user {userId}.", id);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }
@@ -119,7 +156,7 @@ namespace IdentityManager.Controllers
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("Deleted user {name}.", user.UserName);
-                    return Accepted();
+                    return NoContent();
                 }
                 else
                     return BadRequest(result.Errors.First().Description);
@@ -177,7 +214,7 @@ namespace IdentityManager.Controllers
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("Created role {name}.", name);
-                    return Accepted();
+                    return NoContent();
                 }
                 else
                     return BadRequest(result.Errors.First().Description);
@@ -202,7 +239,7 @@ namespace IdentityManager.Controllers
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("Deleted role {name}.", role.Name);
-                    return Accepted();
+                    return NoContent();
                 }
                 else
                     return BadRequest(result.Errors.First().Description);

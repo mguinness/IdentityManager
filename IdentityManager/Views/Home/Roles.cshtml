@@ -17,7 +17,7 @@
     </div>
 </div>
 
-<modal id="roleModal" title="Role">
+<modal id="roleModal" title="Add Role">
     <modal-body>
         <form id="roleForm" data-ajax="true" data-ajax-method="POST" data-ajax-url="/api/CreateRole" data-ajax-success="roleDone" data-ajax-failure="roleFail">
             <div id="roleError" class="alert alert-danger" role="alert"></div>
@@ -43,7 +43,7 @@
                 select: true,
                 buttons: [
                     {
-                        text: "Create",
+                        text: "New",
                         action: function (e, dt, button, config) {
                             $('#roleError').hide();
                             $('#roleForm').trigger('reset');
