@@ -74,7 +74,6 @@ namespace IdentityManager.Controllers
             return Json(result);
         }
 
-
         [HttpPost("api/[action]")]
         public async Task<IActionResult> CreateUser(string email, string password)
         {
@@ -94,6 +93,31 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure creating user {email}.", email);
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [HttpDelete("api/[action]")]
+        public async Task<ActionResult> DeleteUser(string email)
+        {
+            try
+            {
+                var user = await _userManager.FindByEmailAsync(email);
+                if (user == null)
+                    return NotFound("User not found.");
+
+                var result = await _userManager.DeleteAsync(user);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Deleted user {email}.", email);
+                    return Accepted();
+                }
+                else
+                    return BadRequest(result.Errors.First().Description);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure deleting user {email}.", email);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }

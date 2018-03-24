@@ -44,6 +44,7 @@
         $(function () {
             $('#usersTable').DataTable({
                 dom: 'Bfrtip',
+                select: true,
                 buttons: [
                     {
                         text: "Create",
@@ -52,6 +53,25 @@
                             $('#userForm').trigger('reset');
                             $('#userModal').modal({ backdrop: 'static' });
                         }
+                    },
+                    {
+                        extend: "selectedSingle",
+                        text: "Delete",
+                        action: function (e, dt, button, config) {
+                            if (confirm('Are you sure?')) {
+                                var data = dt.row({ selected: true }).data();
+
+                                $.ajax({
+                                    type: 'DELETE',
+                                    url: '/api/DeleteUser',
+                                    data: { email: data.email }
+                                }).done(function (data, status, xhr) {
+                                    $('#usersTable').DataTable().draw();
+                                }).fail(function (xhr, status, error) {
+                                    alert(xhr.responseText || error);
+                                });
+                            }
+                        }
                     }
                 ]
             });
@@ -59,6 +79,7 @@
 
         function userDone(data, status, xhr) {
             $('#userModal').modal('hide');
+            $('#usersTable').DataTable().draw();
         }
 
         function userFail(xhr, status, error) {
