@@ -34,6 +34,11 @@ namespace IdentityManager.Controllers
             return View();
         }
 
+        public IActionResult Roles()
+        {
+            return View();
+        }
+
         [HttpGet("api/[action]")]
         public IActionResult UserList(int draw, List<Dictionary<string, string>> columns, List<Dictionary<string, string>> order, int start, int length, Dictionary<string, string> search)
         {
@@ -122,6 +127,89 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure deleting user {userId}.", userId);
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [HttpGet("api/[action]")]
+        public IActionResult RoleList(int draw, List<Dictionary<string, string>> columns, List<Dictionary<string, string>> order, int start, int length, Dictionary<string, string> search)
+        {
+            var roles = _roleManager.Roles;
+
+            string filter = search["value"];
+            var qry = roles.Where(r =>
+                (String.IsNullOrWhiteSpace(filter) || r.Name.Contains(filter))
+            );
+
+            var idx = Int32.Parse(order[0]["column"]);
+            var dir = order[0]["dir"];
+            var col = columns[idx]["data"];
+
+            var propInfo = typeof(IdentityRole).GetProperty(col, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+
+            if (dir == "asc")
+                qry = qry.OrderBy(r => propInfo.GetValue(r));
+            else
+                qry = qry.OrderByDescending(r => propInfo.GetValue(r));
+
+            var result = new
+            {
+                draw = draw,
+                recordsTotal = roles.Count(),
+                recordsFiltered = qry.Count(),
+                data = qry.Select(r => new {
+                    Id = r.Id,
+                    Name = r.Name
+                }).Skip(start).Take(length).ToArray()
+            };
+
+            return Json(result);
+        }
+
+        [HttpPost("api/[action]")]
+        public async Task<IActionResult> CreateRole(string name)
+        {
+            try
+            {
+                var role = new IdentityRole(name);
+
+                var result = await _roleManager.CreateAsync(role);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Created role {name}.", name);
+                    return Accepted();
+                }
+                else
+                    return BadRequest(result.Errors.First().Description);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure creating role {name}.", name);
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [HttpDelete("api/[action]")]
+        public async Task<ActionResult> DeleteRole(string roleId)
+        {
+            try
+            {
+                var role = await _roleManager.FindByIdAsync(roleId);
+                if (role == null)
+                    return NotFound("Role not found.");
+
+                var result = await _roleManager.DeleteAsync(role);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Deleted role {name}.", role.Name);
+                    return Accepted();
+                }
+                else
+                    return BadRequest(result.Errors.First().Description);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure deleting role {roleId}.", roleId);
                 return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }
