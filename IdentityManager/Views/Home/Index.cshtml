@@ -51,20 +51,18 @@
         <form id="editForm" data-ajax="true" data-ajax-method="PUT" data-ajax-url="/api/UpdateUser" data-ajax-success="editDone" data-ajax-failure="editFail">
             <div id="editError" class="alert alert-danger" role="alert"></div>
 
-            <ul class="nav nav-tabs">
+            <ul id="tabs" class="nav nav-tabs">
                 <li class="active">
-                    <a data-toggle="tab" href="#user">User</a>
+                    <a href="#user" data-toggle="tab">User</a>
                 </li>
                 <li>
-                    <a data-toggle="tab" href="#roles">Roles</a>
+                    <a href="#roles" data-toggle="tab">Roles</a>
                 </li>
             </ul>
 
             <div class="tab-content">
                 <div id="user" class="tab-pane active">
                     <div class="form-group">
-                        <label>Username:</label>
-                        <p id="Username" class="form-control-static"></p>
                         <label for="email">Email:</label>
                         <input name="email" type="email" class="form-control" required />
                         <label for="locked">Locked:</label>
@@ -113,9 +111,9 @@
                         action: function (e, dt, button, config) {
                             var data = dt.row({ selected: true }).data();
                             $('#editError').hide();
+                            $('#tabs a:first').tab('show');
                             $('#editForm').trigger('reset');
 
-                            $('#editForm #Username').text(data.userName);
                             $('#editForm input[name=email]').val(data.email);
                             $('#editForm input[name=locked]').prop('checked', data.lockedOut);
                             $('#editForm input[name=id]').val(data.id);
