@@ -13,7 +13,7 @@
                     <th data-data="email">Email</th>
                     <th data-data="userName">UserName</th>
                     <th data-data="displayName" data-default-content="" data-orderable="false">Name</th>
-                    <th data-data="roles">Roles</th>
+                    <th data-data="roles" data-orderable="false">Roles</th>
                     <th data-data="lockedOut" data-orderable="false">Locked</th>
                 </tr>
             </thead>
@@ -115,6 +115,25 @@
     </modal-footer>
 </modal>
 
+<modal id="pwdModal" title="Reset Password">
+    <modal-body>
+        <form id="pwdForm" data-ajax="true" data-ajax-method="POST" data-ajax-url="/api/ResetPassword" data-ajax-success="pwdDone" data-ajax-failure="pwdFail">
+            <div id="pwdError" class="alert alert-danger" role="alert"></div>
+
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input name="password" type="password" class="form-control" required />
+                <label for="verify">Verify:</label>
+                <input name="verify" type="password" class="form-control" required />
+                <input name="id" type="hidden" />
+            </div>
+        </form>
+    </modal-body>
+    <modal-footer dismiss-text="Cancel">
+        <button type="submit" form="pwdForm" class="btn btn-primary">Reset</button>
+    </modal-footer>
+</modal>
+
 @section Scripts {
     <script type="text/javascript" src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
 
@@ -174,6 +193,17 @@
                                     .fail(delFail);
                             }
                         }
+                    },
+                    {
+                        extend: "selectedSingle",
+                        text: "Password",
+                        action: function (e, dt, button, config) {
+                            var data = dt.row({ selected: true }).data();
+                            $('#pwdError').hide();
+                            $('#pwdForm').trigger('reset');
+                            $('#pwdForm input[name=id]').val(data.id);
+                            $('#pwdModal').modal({ backdrop: 'static' });
+                        }
                     }
                 ]
             });
@@ -229,6 +259,14 @@
 
         function delFail(xhr, status, error) {
             alert(xhr.responseText || error);
+        }
+
+        function pwdDone(data, status, xhr) {
+            $('#pwdModal').modal('hide');
+        }
+
+        function pwdFail(xhr, status, error) {
+            $('#pwdError').html(xhr.responseText || error).fadeIn();
         }
     </script>
 }

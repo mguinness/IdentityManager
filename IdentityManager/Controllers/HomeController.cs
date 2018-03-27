@@ -45,6 +45,11 @@ namespace IdentityManager.Controllers
             return View();
         }
 
+        public IActionResult Error()
+        {
+            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
         [HttpGet("api/[action]")]
         public IActionResult UserList(int draw, List<Dictionary<string, string>> columns, List<Dictionary<string, string>> order, int start, int length, Dictionary<string, string> search)
         {
@@ -183,6 +188,37 @@ namespace IdentityManager.Controllers
             }
         }
 
+        [HttpPost("api/[action]")]
+        public async Task<IActionResult> ResetPassword(string id, string password, string verify)
+        {
+            try
+            {
+                if (password != verify)
+                    return BadRequest("Passwords entered do not match.");
+
+                var user = await _userManager.FindByIdAsync(id);
+                if (user == null)
+                    return NotFound("User not found.");
+
+                if (await _userManager.HasPasswordAsync(user))
+                    await _userManager.RemovePasswordAsync(user);
+
+                var result = await _userManager.AddPasswordAsync(user, password);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Password reset for {name}.", user.UserName);
+                    return NoContent();
+                }
+                else
+                    return BadRequest(result.Errors.First().Description);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed password reset for user {userId}.", id);
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
         [HttpGet("api/[action]")]
         public IActionResult RoleList(int draw, List<Dictionary<string, string>> columns, List<Dictionary<string, string>> order, int start, int length, Dictionary<string, string> search)
         {
@@ -264,11 +300,6 @@ namespace IdentityManager.Controllers
                 _logger.LogError(ex, "Failure deleting role {roleId}.", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
-        }
-
-        public IActionResult Error()
-        {
-            return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
         }
     }
 }
