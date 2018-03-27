@@ -20,18 +20,23 @@ namespace IdentityManager.Controllers
         private readonly RoleManager<IdentityRole> _roleManager;
         private readonly ILogger _logger;
         private readonly Dictionary<string, string> _roles;
+        private readonly Dictionary<string, string> _claimTypes;
 
         public HomeController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<HomeController> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
             _logger = logger;
+
             _roles = roleManager.Roles.ToDictionary(r => r.Id, r => r.Name);
+            var fldInfo = typeof(ClaimTypes).GetFields(BindingFlags.Static | BindingFlags.Public);
+            _claimTypes = fldInfo.ToDictionary(i => i.Name, i => (string)i.GetValue(null));
         }
 
         public IActionResult Index()
         {
             ViewBag.Roles = _roles;
+            ViewBag.ClaimTypes = _claimTypes.Keys.OrderBy(s => s);
             return View();
         }
 
@@ -72,7 +77,8 @@ namespace IdentityManager.Controllers
                     Email = u.Email,
                     LockedOut = u.LockoutEnd == null ? String.Empty : "Yes",
                     Roles = u.Roles.Select(r => _roles[r.RoleId]),
-                    DisplayName = u.Claims.SingleOrDefault(c => c.ClaimType == ClaimTypes.Name).ClaimValue,
+                    Claims = u.Claims.Select(c => new KeyValuePair<string, string>(_claimTypes.Single(x => x.Value == c.ClaimType).Key, c.ClaimValue)),
+                    DisplayName = u.Claims.FirstOrDefault(c => c.ClaimType == ClaimTypes.Name).ClaimValue,
                     UserName = u.UserName
                 }).Skip(start).Take(length).ToArray()
             };
@@ -108,7 +114,7 @@ namespace IdentityManager.Controllers
         }
 
         [HttpPost("api/[action]")]
-        public async Task<ActionResult> UpdateUser(string id, string email, string locked, string[] roles)
+        public async Task<ActionResult> UpdateUser(string id, string email, string locked, string[] roles, List<KeyValuePair<string, string>> claims)
         {
             try
             {
@@ -131,6 +137,14 @@ namespace IdentityManager.Controllers
 
                     foreach (string role in userRoles.Except(roles))
                         await _userManager.RemoveFromRoleAsync(user, role);
+
+                    var userClaims = await _userManager.GetClaimsAsync(user);
+
+                    foreach (var kvp in claims.Where(a => !userClaims.Any(b => _claimTypes[a.Key] == b.Type && a.Value == b.Value)))
+                        await _userManager.AddClaimAsync(user, new Claim(_claimTypes[kvp.Key], kvp.Value));
+
+                    foreach (var claim in userClaims.Where(a => !claims.Any(b => a.Type == _claimTypes[b.Key] && a.Value == b.Value)))
+                        await _userManager.RemoveClaimAsync(user, claim);
 
                     return NoContent();
                 }

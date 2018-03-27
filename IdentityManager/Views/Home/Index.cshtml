@@ -48,7 +48,7 @@
 
 <modal id="editModal" title="Edit User">
     <modal-body>
-        <form id="editForm" data-ajax="true" data-ajax-method="PUT" data-ajax-url="/api/UpdateUser" data-ajax-success="editDone" data-ajax-failure="editFail">
+        <form id="editForm" data-ajax="true" data-ajax-method="POST" data-ajax-url="/api/UpdateUser" data-ajax-success="editDone" data-ajax-failure="editFail">
             <div id="editError" class="alert alert-danger" role="alert"></div>
 
             <ul id="tabs" class="nav nav-tabs">
@@ -58,7 +58,12 @@
                 <li>
                     <a href="#roles" data-toggle="tab">Roles</a>
                 </li>
+                <li>
+                    <a href="#claims" data-toggle="tab">Claims</a>
+                </li>
             </ul>
+
+            <br />
 
             <div class="tab-content">
                 <div id="user" class="tab-pane active">
@@ -79,6 +84,28 @@
                             </div>
                         }
                     </div>
+                </div>
+                <div id="claims" class="tab-pane">
+                    <table id="claimsTable" class="table table-condensed">
+                        <tbody>
+                            <tr>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>Action</th>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>
+                                    <select id="newType" asp-items="@(new SelectList(ViewBag.ClaimTypes))">
+                                        <option></option>
+                                    </select>
+                                </td>
+                                <td><input id="newValue" type="text"></td>
+                                <td><a id="addClaim">Add</a></td>
+                            </tr>
+                        </tfoot>
+                    </table>
                 </div>
             </div>
         </form>
@@ -113,6 +140,7 @@
                             $('#editError').hide();
                             $('#tabs a:first').tab('show');
                             $('#editForm').trigger('reset');
+                            $('#claimsTable tbody tr:not(:first)').remove();
 
                             $('#editForm input[name=email]').val(data.email);
                             $('#editForm input[name=locked]').prop('checked', data.lockedOut);
@@ -120,6 +148,11 @@
 
                             $.each(data.roles, function (index, value) {
                                 $('#editForm :checkbox[value=' + value + ']').prop('checked', true);
+                            });
+
+                            $.each(data.claims, function (index, value) {
+                                $('#claimsTable tbody').append('<tr><td data-field="key">' + value.key + '</td>' +
+                                    '<td data-field="value">' + value.value + '</td><td><a class="removeClaim">Remove</a></td></tr>');
                             });
 
                             $('#editModal').modal({ backdrop: 'static' });
@@ -146,6 +179,31 @@
             });
         });
 
+        $('#claimsTable').on('click', 'a.removeClaim', function () {
+            if (confirm('Are you sure?'))
+                $(this).closest('tr').remove();
+        });
+
+        $('#addClaim').click(function () {
+            if ($('#newType').val() && $('#newValue').val()) {
+                $('#claimsTable tbody').append('<tr><td data-field="key">' + $('#newType').val() + '</td>' +
+                    '<td data-field="value">' + $('#newValue').val() + '</td><td><a class="removeClaim">Remove</a></td></tr>');
+                $('#newType, #newValue').val('');
+            }
+            else
+                alert('Incomplete entry');
+        });
+
+        $("#editForm").submit(function () {
+            $('#claimsTable tbody tr:gt(0)').each(function (index, elem) {
+                var key = $(this).find('td[data-field=key]');
+                key.append($('<input>').attr('name', 'claims[' + index + '][key]').attr('type', 'hidden').val(key.text()));
+
+                var val = $(this).find('td[data-field=value]');
+                val.append($('<input>').attr('name', 'claims[' + index + '][value]').attr('type', 'hidden').val(val.text()));
+            });
+        });
+
         function userDone(data, status, xhr) {
             $('#userModal').modal('hide');
             $('#usersTable').DataTable().draw();
@@ -162,6 +220,7 @@
 
         function editFail(xhr, status, error) {
             $('#editError').html(xhr.responseText || error).fadeIn();
+            $('#claimsTable input[type="hidden"]').remove();
         }
 
         function delDone(data, status, xhr) {
