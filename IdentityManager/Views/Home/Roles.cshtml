@@ -33,6 +33,60 @@
     </modal-footer>
 </modal>
 
+<modal id="editModal" title="Edit Role">
+    <modal-body>
+        <form id="editForm" data-ajax="true" data-ajax-method="POST" data-ajax-url="/api/UpdateRole" data-ajax-success="editDone" data-ajax-failure="editFail">
+            <div id="editError" class="alert alert-danger" role="alert"></div>
+
+            <ul id="tabs" class="nav nav-tabs">
+                <li class="active">
+                    <a href="#role" data-toggle="tab">Role</a>
+                </li>
+                <li>
+                    <a href="#claims" data-toggle="tab">Claims</a>
+                </li>
+            </ul>
+
+            <br />
+
+            <div class="tab-content">
+                <div id="role" class="tab-pane active">
+                    <div class="form-group">
+                        <label for="name">Name:</label>
+                        <input name="name" type="text" class="form-control" required />
+                        <input name="id" type="hidden" />
+                    </div>
+                </div>
+                <div id="claims" class="tab-pane">
+                    <table id="claimsTable" class="table table-condensed">
+                        <tbody>
+                            <tr>
+                                <th>Type</th>
+                                <th>Value</th>
+                                <th>Action</th>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td>
+                                    <select id="newType" asp-items="@(new SelectList(ViewBag.ClaimTypes))">
+                                        <option></option>
+                                    </select>
+                                </td>
+                                <td><input id="newValue" type="text"></td>
+                                <td><a id="addClaim">Add</a></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </form>
+    </modal-body>
+    <modal-footer dismiss-text="Cancel">
+        <button type="submit" form="editForm" class="btn btn-primary">Update</button>
+    </modal-footer>
+</modal>
+
 @section Scripts {
     <script type="text/javascript" src="~/lib/jquery-ajax-unobtrusive/jquery.unobtrusive-ajax.min.js"></script>
 
@@ -48,6 +102,27 @@
                             $('#roleError').hide();
                             $('#roleForm').trigger('reset');
                             $('#roleModal').modal({ backdrop: 'static' });
+                        }
+                    },
+                    {
+                        extend: "selectedSingle",
+                        text: "Edit",
+                        action: function (e, dt, button, config) {
+                            var data = dt.row({ selected: true }).data();
+                            $('#editError').hide();
+                            $('#tabs a:first').tab('show');
+                            $('#editForm').trigger('reset');
+                            $('#claimsTable tbody tr:not(:first)').remove();
+
+                            $('#editForm input[name=name]').val(data.name);
+                            $('#editForm input[name=id]').val(data.id);
+
+                            $.each(data.claims, function (index, value) {
+                                $('#claimsTable tbody').append('<tr><td data-field="key">' + value.key + '</td>' +
+                                    '<td data-field="value">' + value.value + '</td><td><a class="removeClaim">Remove</a></td></tr>');
+                            });
+
+                            $('#editModal').modal({ backdrop: 'static' });
                         }
                     },
                     {
@@ -71,6 +146,31 @@
             });
         });
 
+        $('#claimsTable').on('click', 'a.removeClaim', function () {
+            if (confirm('Are you sure?'))
+                $(this).closest('tr').remove();
+        });
+
+        $('#addClaim').click(function () {
+            if ($('#newType').val() && $('#newValue').val()) {
+                $('#claimsTable tbody').append('<tr><td data-field="key">' + $('#newType').val() + '</td>' +
+                    '<td data-field="value">' + $('#newValue').val() + '</td><td><a class="removeClaim">Remove</a></td></tr>');
+                $('#newType, #newValue').val('');
+            }
+            else
+                alert('Incomplete entry');
+        });
+
+        $("#editForm").submit(function () {
+            $('#claimsTable tbody tr:gt(0)').each(function (index, elem) {
+                var key = $(this).find('td[data-field=key]');
+                key.append($('<input>').attr('name', 'claims[' + index + '][key]').attr('type', 'hidden').val(key.text()));
+
+                var val = $(this).find('td[data-field=value]');
+                val.append($('<input>').attr('name', 'claims[' + index + '][value]').attr('type', 'hidden').val(val.text()));
+            });
+        });
+
         function roleDone(data, status, xhr) {
             $('#roleModal').modal('hide');
             $('#rolesTable').DataTable().draw();
@@ -78,6 +178,16 @@
 
         function roleFail(xhr, status, error) {
             $('#roleError').html(xhr.responseText || error).fadeIn();
+        }
+
+        function editDone(data, status, xhr) {
+            $('#editModal').modal('hide');
+            $('#rolesTable').DataTable().draw();
+        }
+
+        function editFail(xhr, status, error) {
+            $('#editError').html(xhr.responseText || error).fadeIn();
+            $('#claimsTable input[type="hidden"]').remove();
         }
 
         function delDone(data, status, xhr) {

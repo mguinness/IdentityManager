@@ -17,12 +17,12 @@ namespace IdentityManager.Controllers
     public class HomeController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly RoleManager<IdentityRole> _roleManager;
+        private readonly RoleManager<ApplicationRole> _roleManager;
         private readonly ILogger _logger;
         private readonly Dictionary<string, string> _roles;
         private readonly Dictionary<string, string> _claimTypes;
 
-        public HomeController(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<HomeController> logger)
+        public HomeController(UserManager<ApplicationUser> userManager, RoleManager<ApplicationRole> roleManager, ILogger<HomeController> logger)
         {
             _userManager = userManager;
             _roleManager = roleManager;
@@ -42,6 +42,7 @@ namespace IdentityManager.Controllers
 
         public IActionResult Roles()
         {
+            ViewBag.ClaimTypes = _claimTypes.Keys.OrderBy(s => s);
             return View();
         }
 
@@ -222,7 +223,7 @@ namespace IdentityManager.Controllers
         [HttpGet("api/[action]")]
         public IActionResult RoleList(int draw, List<Dictionary<string, string>> columns, List<Dictionary<string, string>> order, int start, int length, Dictionary<string, string> search)
         {
-            var roles = _roleManager.Roles;
+            var roles = _roleManager.Roles.Include(r => r.Claims);
 
             string filter = search["value"];
             var qry = roles.Where(r =>
@@ -233,7 +234,7 @@ namespace IdentityManager.Controllers
             var dir = order[0]["dir"];
             var col = columns[idx]["data"];
 
-            var propInfo = typeof(IdentityRole).GetProperty(col, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            var propInfo = typeof(ApplicationRole).GetProperty(col, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
             if (dir == "asc")
                 qry = qry.OrderBy(r => propInfo.GetValue(r));
@@ -247,7 +248,8 @@ namespace IdentityManager.Controllers
                 recordsFiltered = qry.Count(),
                 data = qry.Select(r => new {
                     Id = r.Id,
-                    Name = r.Name
+                    Name = r.Name,
+                    Claims = r.Claims.Select(c => new KeyValuePair<string, string>(_claimTypes.Single(x => x.Value == c.ClaimType).Key, c.ClaimValue))
                 }).Skip(start).Take(length).ToArray()
             };
 
@@ -259,7 +261,7 @@ namespace IdentityManager.Controllers
         {
             try
             {
-                var role = new IdentityRole(name);
+                var role = new ApplicationRole(name);
 
                 var result = await _roleManager.CreateAsync(role);
                 if (result.Succeeded)
@@ -273,6 +275,42 @@ namespace IdentityManager.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failure creating role {name}.", name);
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+            }
+        }
+
+        [HttpPost("api/[action]")]
+        public async Task<ActionResult> UpdateRole(string id, string name, List<KeyValuePair<string, string>> claims)
+        {
+            try
+            {
+                var role = await _roleManager.FindByIdAsync(id);
+                if (role == null)
+                    return NotFound("Role not found.");
+
+                role.Name = name;
+
+                var result = await _roleManager.UpdateAsync(role);
+                if (result.Succeeded)
+                {
+                    _logger.LogInformation("Updated role {name}.", role.Name);
+
+                    var roleClaims = await _roleManager.GetClaimsAsync(role);
+
+                    foreach (var kvp in claims.Where(a => !roleClaims.Any(b => _claimTypes[a.Key] == b.Type && a.Value == b.Value)))
+                        await _roleManager.AddClaimAsync(role, new Claim(_claimTypes[kvp.Key], kvp.Value));
+
+                    foreach (var claim in roleClaims.Where(a => !claims.Any(b => a.Type == _claimTypes[b.Key] && a.Value == b.Value)))
+                        await _roleManager.RemoveClaimAsync(role, claim);
+
+                    return NoContent();
+                }
+                else
+                    return BadRequest(result.Errors.First().Description);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failure updating role {roleId}.", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
             }
         }
