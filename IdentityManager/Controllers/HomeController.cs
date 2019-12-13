@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using IdentityManager.Models;
@@ -56,7 +57,7 @@ namespace IdentityManager.Controllers
         {
             var users = _userManager.Users.Include(u => u.Roles).Include(u => u.Claims);
 
-            string filter = search["value"];
+            string filter = search["value"] ?? "";
             var qry = users.Where(u =>
                 (String.IsNullOrWhiteSpace(filter) || u.Email.Contains(filter)) ||
                 (String.IsNullOrWhiteSpace(filter) || u.UserName.Contains(filter))
@@ -66,19 +67,23 @@ namespace IdentityManager.Controllers
             var dir = order[0]["dir"];
             var col = columns[idx]["data"];
 
-            var propInfo = typeof(ApplicationUser).GetProperty(col, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            var propInfo = typeof(ApplicationUser)
+                .GetProperty(col, 
+                    BindingFlags.IgnoreCase 
+                    | BindingFlags.Public 
+                    | BindingFlags.Instance);
 
-            if (dir == "asc")
-                qry = qry.OrderBy(u => propInfo.GetValue(u));
-            else
-                qry = qry.OrderByDescending(u => propInfo.GetValue(u));
+            var qrylist = 
+                OrderByName(qry, propInfo, dir != "asc")
+                    .Skip(start).Take(length)
+                    .ToList();
 
             var result = new
             {
                 draw = draw,
                 recordsTotal = users.Count(),
-                recordsFiltered = qry.Count(),
-                data = qry.Select(u => new {
+                recordsFiltered = qrylist.Count,
+                data = qrylist.Select(u => new {
                     Id = u.Id,
                     Email = u.Email,
                     LockedOut = u.LockoutEnd == null ? String.Empty : "Yes",
@@ -86,10 +91,39 @@ namespace IdentityManager.Controllers
                     Claims = u.Claims.Select(c => new KeyValuePair<string, string>(_claimTypes.Single(x => x.Value == c.ClaimType).Key, c.ClaimValue)),
                     DisplayName = u.Claims.FirstOrDefault(c => c.ClaimType == ClaimTypes.Name).ClaimValue,
                     UserName = u.UserName
-                }).Skip(start).Take(length).ToArray()
+                }).ToArray()
             };
 
             return Json(result);
+        }
+
+        public IQueryable<T> OrderByName<T>(
+            IQueryable<T> source,
+            PropertyInfo pi,
+            bool isDescending)
+        {
+
+            if (source == null) throw new ArgumentNullException(nameof(source));
+            if (pi == null) throw new ArgumentNullException(nameof(pi));
+
+            var type = typeof(T);
+            var arg = Expression.Parameter(type, "x");
+
+            var expr = Expression.Property(arg, pi);
+            type = pi.PropertyType;
+
+            var delegateType = typeof(Func<,>).MakeGenericType(typeof(T), type);
+            var lambda = Expression.Lambda(delegateType, expr, arg);
+
+            var methodName = isDescending ? "OrderByDescending" : "OrderBy";
+            object result = typeof(Queryable).GetMethods().Single(
+                    method => method.Name == methodName
+                              && method.IsGenericMethodDefinition
+                              && method.GetGenericArguments().Length == 2
+                              && method.GetParameters().Length == 2)
+                .MakeGenericMethod(typeof(T), type)
+                .Invoke(null, new object[] { source, lambda });
+            return (IQueryable<T>)result;
         }
 
         [HttpPost("api/[action]")]
@@ -236,21 +270,21 @@ namespace IdentityManager.Controllers
 
             var propInfo = typeof(ApplicationRole).GetProperty(col, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
 
-            if (dir == "asc")
-                qry = qry.OrderBy(r => propInfo.GetValue(r));
-            else
-                qry = qry.OrderByDescending(r => propInfo.GetValue(r));
+            var qrylist =
+                OrderByName(qry, propInfo, dir != "asc")
+                    .Skip(start).Take(length)
+                    .ToList();
 
             var result = new
             {
                 draw = draw,
                 recordsTotal = roles.Count(),
-                recordsFiltered = qry.Count(),
-                data = qry.Select(r => new {
+                recordsFiltered = qrylist.Count(),
+                data = qrylist.Select(r => new {
                     Id = r.Id,
                     Name = r.Name,
                     Claims = r.Claims.Select(c => new KeyValuePair<string, string>(_claimTypes.Single(x => x.Value == c.ClaimType).Key, c.ClaimValue))
-                }).Skip(start).Take(length).ToArray()
+                }).ToArray()
             };
 
             return Json(result);
