@@ -66,12 +66,12 @@ namespace IdentityManager.Controllers
             var dir = order[0]["dir"];
             var col = columns[idx]["data"];
 
-            var propInfo = typeof(ApplicationUser).GetProperty(col, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            var fld = Char.ToUpper(col[0]) + col.Substring(1);
 
             if (dir == "asc")
-                qry = qry.OrderBy(u => propInfo.GetValue(u));
+                qry = qry.OrderBy(x => EF.Property<string>(x, fld));
             else
-                qry = qry.OrderByDescending(u => propInfo.GetValue(u));
+                qry = qry.OrderByDescending(x => EF.Property<string>(x, fld));
 
             var result = new
             {
@@ -120,7 +120,7 @@ namespace IdentityManager.Controllers
         }
 
         [HttpPost("api/[action]")]
-        public async Task<ActionResult> UpdateUser(string id, string email, string locked, string[] roles, List<KeyValuePair<string, string>> claims)
+        public async Task<ActionResult> UpdateUser(string id, string email, bool locked, string[] roles, List<KeyValuePair<string, string>> claims)
         {
             try
             {
@@ -129,7 +129,7 @@ namespace IdentityManager.Controllers
                     return NotFound("User not found.");
 
                 user.Email = email;
-                user.LockoutEnd = locked == null ? default(DateTimeOffset?) : DateTimeOffset.MaxValue;
+                user.LockoutEnd = locked ? DateTimeOffset.MaxValue : default(DateTimeOffset?);
 
                 var result = await _userManager.UpdateAsync(user);
                 if (result.Succeeded)
@@ -234,12 +234,12 @@ namespace IdentityManager.Controllers
             var dir = order[0]["dir"];
             var col = columns[idx]["data"];
 
-            var propInfo = typeof(ApplicationRole).GetProperty(col, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+            var fld = Char.ToUpper(col[0]) + col.Substring(1);
 
             if (dir == "asc")
-                qry = qry.OrderBy(r => propInfo.GetValue(r));
+                qry = qry.OrderBy(x => EF.Property<string>(x, fld));
             else
-                qry = qry.OrderByDescending(r => propInfo.GetValue(r));
+                qry = qry.OrderByDescending(x => EF.Property<string>(x, fld));
 
             var result = new
             {

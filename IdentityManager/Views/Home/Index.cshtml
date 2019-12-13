@@ -71,7 +71,7 @@
                         <label for="email">Email:</label>
                         <input name="email" type="email" class="form-control" required />
                         <label for="locked">Locked:</label>
-                        <input name="locked" type="checkbox" class="checkbox" value="Yes">
+                        <input name="locked" type="checkbox" class="checkbox" value="true">
                         <input name="id" type="hidden" />
                     </div>
                 </div>
@@ -205,7 +205,11 @@
                             $('#pwdModal').modal({ backdrop: 'static' });
                         }
                     }
-                ]
+                ],
+                "createdRow": function(row, data) {
+                    if (data.lockedOut)
+                        $(row).addClass('danger');
+                }
             });
         });
 

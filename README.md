@@ -1,6 +1,8 @@
 # Identity Manager
 Identity management system for [ASP.NET Core Identity](https://github.com/aspnet/Identity).
 
+**This GitHub project is deprecated.** Ongoing development can be found at <https://github.com/mguinness/IdentityManagerUI>.
+
 ## Introduction
 When creating a new ASP.NET Core project you have the option to change the authentication to individual user accounts which includes templates to wire up the identity system into your website. This includes registration, login and several pages related to user account self management like 2FA and password reset.
 
