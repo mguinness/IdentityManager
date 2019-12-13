@@ -57,7 +57,7 @@ namespace IdentityManager.Controllers
         {
             var users = _userManager.Users.Include(u => u.Roles).Include(u => u.Claims);
 
-            string filter = search["value"] ?? "";
+            string filter = search["value"];
             var qry = users.Where(u =>
                 (String.IsNullOrWhiteSpace(filter) || u.Email.Contains(filter)) ||
                 (String.IsNullOrWhiteSpace(filter) || u.UserName.Contains(filter))
